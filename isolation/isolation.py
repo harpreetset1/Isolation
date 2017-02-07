@@ -45,6 +45,7 @@ class Board(object):
         self.width = width
         self.height = height
         self.move_count = 0
+        self.root = None
         self.__player_1__ = player_1
         self.__player_2__ = player_2
         self.__active_player__ = player_1
@@ -100,6 +101,7 @@ class Board(object):
         new_board.__last_player_move__ = copy(self.__last_player_move__)
         new_board.__player_symbols__ = copy(self.__player_symbols__)
         new_board.__board_state__ = deepcopy(self.__board_state__)
+        new_board.root = self.root
         return new_board
 
     def forecast_move(self, move):
@@ -120,6 +122,8 @@ class Board(object):
         """
         new_board = self.copy()
         new_board.apply_move(move)
+        if new_board.root is None:
+            new_board.root = move
         return new_board
 
     def move_is_legal(self, move):
@@ -204,6 +208,7 @@ class Board(object):
         self.__board_state__[row][col] = self.__player_symbols__[self.active_player]
         self.__active_player__, self.__inactive_player__ = self.__inactive_player__, self.__active_player__
         self.move_count += 1
+        self.root =  move
 
     def is_winner(self, player):
         """ Test whether the specified player has won the game. """
