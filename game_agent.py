@@ -126,7 +126,7 @@ class CustomPlayer:
         # immediately if there are no legal moves
         print('get_move legal moves: %s' % legal_moves)
         if(len(legal_moves)==0):
-            return legal_moves[randint(0, len(legal_moves) - 1)]
+            return (-1,-1)
         if(game.move_count <=1):
             return game.get_player_location(self)
         move = legal_moves[randint(0, len(legal_moves) - 1)]
@@ -135,18 +135,28 @@ class CustomPlayer:
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
-            for d in range(self.search_depth):
-                
+            
+            if(self.iterative): #IDS
+                depth = 1
+                while(self.time_left):
+                    if(self.method == 'minimax'):
+                        _,move = self.minimax(game,depth)
+                    elif(self.method == 'alphabeta'):
+                        _,move = self.alphabeta(game, depth)
+                    depth +=1
+                #game.apply_move(move)
+            else: #DFS
                 if(self.method == 'minimax'):
-                    move = self.minimax(game,d+1)[1]
+                    _,move = self.minimax(game,self.search_depth)
                 elif(self.method == 'alphabeta'):
-                    move = self.alphabeta(game, d+1)[1]
-            game.apply_move(move)
+                    _,move = self.alphabeta(game, self.search_depth)
+                #game.apply_move(move)
+                
             return move
 
         except Timeout:
             # Handle any actions required at timeout, if necessary
-            game.apply_move(move)
+            #game.apply_move(move)
             return move
 
         # Return the best move from the last completed search iteration
@@ -177,15 +187,14 @@ class CustomPlayer:
         tuple(int, int)
             The best move for the current branch; (-1, -1) for no legal moves
         """
-        list_moves = game.get_legal_moves(self)
+        list_moves = game.get_legal_moves()
         
         if self.time_left() < self.TIMER_THRESHOLD:
-            return custom_score(game, self),list_moves[0]
+            return self.score(game, self),list_moves[0]
         
         # TODO: finish this function!
-        print('in mimimax %s' % list_moves)
         if(depth == 0 or len(list_moves)==0):
-            return game.utility(self),game.get_player_location(self)
+            return self.score(game,self),(-1,-1)
         best_move = list_moves[0]
         best_score = 0.0
         if(maximizing_player):
@@ -193,17 +202,17 @@ class CustomPlayer:
             for a in list_moves:
                 clone = game.forecast_move(a)
 
-                score = self.minimax(clone, depth-1,False)[0] 
+                score,move = self.minimax(clone, depth-1,False)
                 if(score >= best_score):
                     best_move = a
                     best_score = score
             return best_score,best_move
         else:
-            best_score = float('-inf')
+            best_score = float('inf')
             for a in list_moves:
                 clone = game.forecast_move(a)
 
-                score = self.minimax(clone, depth-1,True)[0] 
+                score,move = self.minimax(clone, depth-1,True) 
                 if(score < best_score):
                     best_move = a
                     best_score = score
@@ -244,18 +253,15 @@ class CustomPlayer:
         tuple(int, int)
             The best move for the current branch; (-1, -1) for no legal moves
         """
-        list_moves = game.get_legal_moves(self)
+        list_moves = game.get_legal_moves()
         if self.time_left() < self.TIMER_THRESHOLD:
-            return custom_score(game, self),list_moves[0]
+            return self.score(game, self),(-1,-1)
         
         
 
-        if(len(list_moves)==0):
-            print('legal move 0 loop for %s at depth: %s' % (game.root,depth))
-            return custom_score(game, self),game.root
-        if(depth==0):
+        if(depth == 0 or len(list_moves)==0):
             print('depth 0 loop for %s at depth: %s' % (len(list_moves),list_moves))
-            return custom_score(game, self),list_moves[0]
+            return self.score(game,self),(-1,-1)
         best_move = list_moves[0]
         #print(list_moves)
         best_score = 0.0
@@ -267,22 +273,28 @@ class CustomPlayer:
             for a in list_moves:
                 clone = game.forecast_move(a)
                 #clone_legal_moves = clone.get_legal_moves(self)
-                score = self.alphabeta(clone, depth -1, alpha, beta, False)[0]
+                
+                score,move = self.alphabeta(clone, depth -1, alpha, beta, False)
+                print('max for loop %s for move %s' % (score,move))
                 alpha = max(alpha,score)
-                if(beta <= alpha):
+                if(best_score < score):
                     best_move = a
-                    best_score = alpha
-                    break
+                    best_score = score
+                if(score>= beta):
+                    return score,a
+                alpha= max(alpha,score)    
             return best_score,best_move
         else:
             best_score = float('inf')
             for a in list_moves:
                 clone = game.forecast_move(a)
-                score = self.alphabeta(clone, depth -1, alpha, beta, True)[0]
+                score,move = self.alphabeta(clone, depth -1, alpha, beta, True)
+                print('min for loop %s for move %s' % (score,move))
                 beta = min(beta,score)
-                if(beta <= alpha):
+                if(score <= best_score):
                     best_move = a
-                    best_score = beta 
-                    break
+                    best_score = score 
+                if(score <=alpha):
+                    return score,a
+                beta = min(beta,score)
             return best_score,best_move
-        return best_score,best_move    
